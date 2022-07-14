@@ -11,7 +11,7 @@ const api = supertest(app)
 const Blog = require('../models/blog')
 const User = require('../models/user')
                            
-beforeAll(async () => {
+/* beforeAll(async () => {
   await User.deleteMany({})
   const user = {
     username: 'test',
@@ -24,7 +24,7 @@ beforeAll(async () => {
     .send(user)
     .set('Accept', 'application/json')
     .expect('Content-Type', /application\/json/)
-})
+}) */
 
 
 beforeEach(async () => {
@@ -56,33 +56,40 @@ describe('when there is initially some blogs saved', () => {
 })
 
 describe('addition of a new blog', () => {
-  test('creating a new blog succeeds', async () => {
-
-    const SomeUser = {
-      username: 'username',
-      password: 'password'
+  var headers
+  beforeEach(async () => {
+    const newUser = {
+      username: 'newUser',
+      name: 'New User',
+      password: 'password',
     }
 
-    const loggedUser = await api
+    await api
+      .post('/api/users')
+      .send(newUser)
+
+    const result = await api
       .post('/api/login')
-      .send(SomeUser)
-      .expect('Content-Type', /application\/json/)
-      
-    console.log(loggedUser)
+      .send(newUser)
+
+    headers = {
+      'Authorization': `bearer ${result.body.token}`
+    }
+  })
+
+  test('creating a new blog succeeds', async () => {
 
     const newBlog = {
       title: 'New Blog',
       author: 'Michael Chan',
       url: 'https://reactpatterns.com/',
       likes: 7,
-    }
-    
-   
+    } 
 
     await api
       .post('/api/blogs')
       .send(newBlog)
-      .set('Authorization', `bearer ${loggedUser.body.token}`)
+      .set(headers)
       .expect(201)
       .expect('Content-Type', /application\/json/)
 
@@ -102,6 +109,7 @@ describe('addition of a new blog', () => {
     await api
       .post('/api/blogs')
       .send(newBlog)
+      .set(headers)
       .expect(201)
       .expect('Content-Type', /application\/json/)
 
@@ -111,19 +119,50 @@ describe('addition of a new blog', () => {
   })
 
   test('missing title or url responds with status code 400', async () => {
-    const newBlog = {//eeeh why is there '' 
-      'author': 'missing url and title',
-      'likes': 0,
+    const newBlog = {
+      author: 'missing url and title',
+      likes: 0,
     }
   
     await api
       .post('/api/blogs')
       .send(newBlog)
+      .set(headers)
       .expect(400)
   })
 
-  
+  describe('deletion of a blog', () => {
+    let result
+    beforeEach(async () => {
+      const newBlog = {
+        title: 'new blog',
+        author: 'new author',
+        url: 'asdf.com',
+        likes: 7
+      }
 
+      result = await api
+        .post('/api/blogs')
+        .send(newBlog)
+        .set(headers)
+    })
+
+    test('deleting a blog succeeds', async () => {
+      const blog = result.body
+
+      const initialBlogs = await helper.blogsInDb()
+      await api
+        .delete(`/api/blogs/${blog.id}`)
+        .set(headers)
+        .expect(204)
+
+      const blogsAfterDelete = await helper.blogsInDb()
+  
+      expect(blogsAfterDelete).toHaveLength(initialBlogs.length - 1)
+
+    })
+
+  })
 })
 
 describe('when not logged in',  () => {
@@ -141,22 +180,7 @@ describe('when not logged in',  () => {
   })
 })
 
-describe('deletion of a blog',  () => {
-  
-  test('deleting a single blog post succeeds', async () => {
-    const blogs = await helper.blogsInDb()
-    const blogToBeDeleted = blogs[0]
-  
-    await api
-      .delete(`/api/blogs/${blogToBeDeleted.id}`)
-      .expect(204)
-  
-    const blogsAfterDelete = await helper.blogsInDb()
-  
-    expect(blogsAfterDelete).toHaveLength(helper.initialBlogs.length - 1)
-  })
 
-})
 
 
 describe('editing of a blog',  () => {

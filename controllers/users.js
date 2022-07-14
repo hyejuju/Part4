@@ -6,7 +6,7 @@ usersRouter.post('/', async (request, response) => {
   const { username, name, password } = request.body
 
   if(!password || password.length < 3) {
-    response.status(400).json({ error: 'password missing or too short' })
+    return response.status(400).json({ error: 'password missing or too short' })
   }
 
   const existingUser = await User.findOne({ username })
@@ -19,7 +19,6 @@ usersRouter.post('/', async (request, response) => {
   const saltRounds = 10
   const passwordHash = await bcrypt.hash(password, saltRounds)
 
-
   const user = new User({
     username,
     name,
@@ -27,13 +26,13 @@ usersRouter.post('/', async (request, response) => {
   })
 
   if(!user.username || user.username.length < 3 ) {
-    response.status(400).json({ error: 'username missing or too short' })
+    return response.status(400).json({ error: 'username missing or too short' })
   }
-
 
   const savedUser = await user.save()
 
   response.status(201).json(savedUser)
+  //response.json(savedUser)
 })
 
 usersRouter.get('/', async (request, response) => {

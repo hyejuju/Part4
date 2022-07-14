@@ -34,10 +34,22 @@ const errorHandler = (error, request, response, next) => {
   next(error)
 }
 
-const tokenExtractor = (request, response, next) => {
-
+/* const tokenExtractor = (request, response, next) => {
+  if(request.method == 'GET'){
+    console.log('getget')
+    next()
+  }
+  console.log('tokenExtractor here')
   const authorization = request.get('authorization')
-  //console.log(authorization)
+  if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
+    request.token = authorization.substring(7)
+  } else {
+    request.token = null
+  }
+  next() 
+} */
+const tokenExtractor = (request, response, next) => {
+  const authorization = request.get('authorization')
   if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
     request.token = authorization.substring(7)
   } else {
@@ -46,19 +58,21 @@ const tokenExtractor = (request, response, next) => {
   next()
 }
 
-const userExtractor = async (request, response, next) => {
-  if (!request.token) 
-    request.user = null
 
-  const decodedToken = jwt.verify(request.token, process.env.SECRET)
-  if (!decodedToken.id) {
+const userExtractor = async (request, response, next) => {
+  const token = request.token
+  if (!token) {
     request.user = null
   } else {
-    request.user = await User.findById(decodedToken.id)
+    const decodedToken = jwt.verify(token, process.env.SECRET)
+    if (!decodedToken.id) {
+      request.user = null
+    } else {
+      request.user = await User.findById(decodedToken.id)
+    }
   }
-  
   next()
-} 
+}
 
 module.exports = {
   requestLogger,
